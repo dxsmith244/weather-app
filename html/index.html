@@ -1,11 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather App with SVG Map</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    
+  <div class="app">
+    <h1>🌍 Interactive Weather Map</h1>
+    <div id="map-container">
+      <!-- SVG World Map -->
+      <svg id="map" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+        <circle id="NewYork" cx="300" cy="150" r="10" fill="blue" data-city="New York"></circle>
+        <circle id="London" cx="500" cy="100" r="10" fill="blue" data-city="London"></circle>
+        <circle id="Tokyo" cx="850" cy="200" r="10" fill="blue" data-city="Tokyo"></circle>
+        <circle id="Sydney" cx="950" cy="350" r="10" fill="blue" data-city="Sydney"></circle>
+      </svg>
+    </div>
+    <div id="weather-info">
+      <h2>Weather Information</h2>
+      <p id="city">Click a location on the map</p>
+      <p id="temperature"></p>
+      <p id="description"></p>
+      <p id="humidity"></p>
+      <p id="wind"></p>
+    </div>
+  </div>
+  <script src="script.js"></script>
 </body>
 </html>
