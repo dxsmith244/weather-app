@@ -1,210 +1,197 @@
-const WEATHER_API_URL = 'https://api.tomorrow.io/v4/weather/realtime';
-const API_KEY = 'DIrSVmfMSRjwRV29HUFHIXzC7ce4iTBe';
+const apiKey = "5fc804f7398743c082d144151241911"; // Replace with your WeatherAPI key
 
-const cityForm = document.querySelector('#city-form');
-const searchInput = document.querySelector('#search-input');
-const loading = document.querySelector('.loading');
-const error = document.querySelector(".error");
-const weatherElm = document.querySelector('.weather');
-const weatherBehaviorElm = document.querySelector("#behavior");
-const weatherIconElm = document.querySelector("#weather-icon");
-const temperatureElm = document.querySelector("#temp");
-const humidityElm = document.querySelector("#humidity");
-const windSpeedElm = document.querySelector("#wind-speed");
-const cityElement = document.querySelector("#city");
+// DOM Elements
+const form = document.getElementById("city-form");
+const searchInput = document.getElementById("search-input");
+const weatherDiv = document.querySelector(".weather");
+const errorDiv = document.querySelector(".error");
+const loadingDiv = document.querySelector(".loading");
+const locationButton = document.getElementById("current-location-btn"); // Geolocation button
+const searchButton = document.getElementById("search-btn");
+const recentSearchList = document.getElementById("recent-search-list");
+const citySuggestionsDatalist = document.getElementById("city-suggestions");
 
-cityForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const city = searchInput.value;
-    if (!city || city.length === 0) return;
-    const url = getRequestUrl(city);
-    initializeState();
-    const weatherData = await getWeatherData(url);
-    if (weatherData) processWeatherData(weatherData);
-    toggleLoading();
+// Weather Elements
+const behaviorElem = document.getElementById("behavior");
+const tempElem = document.getElementById("temp");
+const feelslikeElem = document.getElementById("feelslike");
+const weatherIconElem = document.getElementById("weather-icon");
+const humidityElem = document.getElementById("humidity");
+const windSpeedElem = document.getElementById("wind-speed");
+const cityElem = document.getElementById("city");
+const rainElem = document.getElementById("chance-rain");
+const snowElem = document.getElementById("chance-snow");
+
+// Persistent Recent Searches
+let recentSearches = JSON.parse(localStorage.getItem("recentSearches")) || [];
+
+// Updates the UI with recent searches in the datalist
+function updateRecentSearches(city) {
+  if (!recentSearches.includes(city)) {
+    recentSearches.unshift(city);
+    if (recentSearches.length > 5) recentSearches.pop();
+  }
+  localStorage.setItem("recentSearches", JSON.stringify(recentSearches));
+
+  // Clear existing options in the datalist
+  citySuggestionsDatalist.innerHTML = "";
+
+  // Add recent searches as options
+  recentSearches.forEach((search) => {
+    const option = document.createElement("option");
+    option.value = search; // Use the full city name
+    citySuggestionsDatalist.appendChild(option);
+  });
+}
+
+// Fetches weather data from the API
+async function fetchWeather(city) {
+  try {
+    loadingDiv.hidden = false;
+    errorDiv.hidden = true;
+    weatherDiv.hidden = true;
+    document.querySelector(".forecast").hidden = true;
+
+    const apiUrl = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=7&aqi=no&alerts=no`;
+    const response = await fetch(apiUrl);
+    if (!response.ok) throw new Error("Failed to fetch weather data.");
+
+    const data = await response.json();
+    updateWeatherUI(data);
+    updateForecastUI(data.forecast.forecastday);
+  } catch (error) {
+    errorDiv.hidden = false;
+  } finally {
+    loadingDiv.hidden = true;
+  }
+}
+
+// Updates the current weather UI
+function updateWeatherUI(data) {
+  const { name, country, region } = data.location;
+  const { temp_f, condition, humidity, wind_mph, feelslike_f } = data.current;
+  const chanceOfRain = data.forecast.forecastday[0].day.daily_chance_of_rain || 0;
+  const chanceOfSnow = data.forecast.forecastday[0].day.daily_chance_of_snow || 0;
+
+  behaviorElem.textContent = condition.text;
+  tempElem.textContent = temp_f;
+  feelslikeElem.textContent = feelslike_f;
+  weatherIconElem.src = `https:${condition.icon}`;
+  weatherIconElem.alt = condition.text;
+  humidityElem.textContent = humidity;
+  windSpeedElem.textContent = Math.round(wind_mph);
+  cityElem.textContent = `${name}, ${region}, ${country}`;
+  rainElem.textContent = `${chanceOfRain}%`;
+  snowElem.textContent = `${chanceOfSnow}%`;
+
+  weatherDiv.hidden = false;
+}
+
+// Updates the forecast cards UI
+function updateForecastUI(forecast) {
+  const forecastCards = document.getElementById("forecast-cards");
+  forecastCards.innerHTML = "";
+
+  forecast.forEach((day) => {
+    const { date, day: dayData } = day;
+    const { condition, maxtemp_f, mintemp_f, daily_chance_of_rain, daily_chance_of_snow } = dayData;
+
+    const card = document.createElement("div");
+    card.className = "forecast-card";
+
+    card.innerHTML = `
+      <h3>${new Date(date).toLocaleDateString("en-US", { weekday: "long" })}</h3>
+      <p class="date">${new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+      <img src="https:${condition.icon}" alt="${condition.text}">
+      <p>${condition.text}</p>
+      <br>
+      <p>High: ${Math.round(maxtemp_f)}°F</p>
+      <p>Low: ${Math.round(mintemp_f)}°F</p>
+      <p>Chance of Rain: ${daily_chance_of_rain || 0}%</p>
+      <p>Chance of Snow: ${daily_chance_of_snow || 0}%</p>
+    `;
+    forecastCards.appendChild(card);
+  });
+
+  document.querySelector(".forecast").hidden = false;
+}
+
+// Fetches weather for the current location
+function getCurrentLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords: { latitude, longitude } }) => fetchWeather(`${latitude},${longitude}`),
+      () => alert("Unable to retrieve your location.")
+    );
+  } else {
+    alert("Geolocation is not supported by this browser.");
+  }
+}
+
+// Fetches city suggestions from the Weather API based on the user's input
+async function fetchCitySuggestions(query) {
+  try {
+    if (!query) return;
+
+    const apiUrl = `https://api.weatherapi.com/v1/search.json?key=${apiKey}&q=${query}`;
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+
+    // Clear previous suggestions
+    citySuggestionsDatalist.innerHTML = "";
+
+    data.forEach((city) => {
+      const option = document.createElement("option");
+      option.value = `${city.name}, ${city.region}, ${city.country}`;
+      citySuggestionsDatalist.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Error fetching city suggestions:", error);
+  }
+}
+
+// Event Listeners
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const city = searchInput.value.trim();
+  if (city) {
+    fetchWeather(city);
+    updateRecentSearches(city);
+  } else {
+    alert("Please enter a city name.");
+  }
 });
 
-function getRequestUrl(location) {
-    const apiUrl = new URL(WEATHER_API_URL);
-    apiUrl.searchParams.append('apikey', API_KEY);
-    apiUrl.searchParams.append('location', location);
-    return apiUrl.href;
-}
+locationButton.addEventListener("click", (e) => {
+  e.preventDefault();
+  if (!searchInput.value.trim()) {
+    getCurrentLocation();
+  } else {
+    alert("Clear the city field to use current location.");
+  }
+});
 
-async function getWeatherData(url) {
-    let response;
-
-    try {
-        response = await fetch(url);
+// Add an event listener for "Enter" key on the search input
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const city = searchInput.value.trim();
+    if (city) {
+      fetchWeather(city);
+      updateRecentSearches(city);
+    } else {
+      alert("Please enter a city name.");
     }
-    catch (e) {
-    }
+  }
+});
 
-    if (response?.ok) {
-        const json = await response.json();
-        return json;
-    }
+// Disable the geolocation button if the city input has text
+searchInput.addEventListener("input", () => {
+  locationButton.disabled = !!searchInput.value.trim();
+  const query = searchInput.value.trim();
+  fetchCitySuggestions(query); // Trigger city suggestions
+  updateRecentSearches("");  // Refresh recent searches in the dropdown when input is clicked
+});
 
-    error.hidden = false;
-    return null;
-}
-
-function toggleLoading() {
-    loading.toggleAttribute('hidden');
-}
-
-function initializeState() {
-    toggleLoading();
-    error.hidden = true;
-    weatherElm.hidden = true;
-}
-
-function processWeatherData(data) {
-    const values = data.data.values;
-    const weatherCode = values.weatherCode;
-    const weatherBehavior = getBehavior(weatherCode);
-    const weatherIcon = getWeatherIcon(weatherCode);
-    const temperature = values.temperature;
-    const humidity = values.humidity;
-    const windSpeed = values.windSpeed;
-    const city = data.location.name;
-    weatherElm.hidden = false;
-    weatherBehaviorElm.textContent = weatherBehavior;
-    weatherIconElm.src = new URL(`../assets/${weatherIcon}`, import.meta.url).href;
-    temperatureElm.textContent = +temperature;
-    humidityElm.textContent = +humidity;
-    windSpeedElm.textContent = +windSpeed;
-    cityElement.textContent = city;
-    cityElement.setAttribute('title', city);
-}
-
-function getBehavior(weatherCode) {
-    return weatherBehaviors[+weatherCode];
-}
-
-function getWeatherIcon(weatherCode) {
-    return weatherIcons[+weatherCode];
-}
-
-const weatherBehaviors = {
-    "0": "Unknown",
-    "1000": "Clear, Sunny",
-    "1100": "Mostly Clear",
-    "1101": "Partly Cloudy",
-    "1102": "Mostly Cloudy",
-    "1001": "Cloudy",
-    "2000": "Fog",
-    "2100": "Light Fog",
-    "4000": "Drizzle",
-    "4001": "Rain",
-    "4200": "Light Rain",
-    "4201": "Heavy Rain",
-    "5000": "Snow",
-    "5001": "Flurries",
-    "5100": "Light Snow",
-    "5101": "Heavy Snow",
-    "6000": "Freezing Drizzle",
-    "6001": "Freezing Rain",
-    "6200": "Light Freezing Rain",
-    "6201": "Heavy Freezing Rain",
-    "7000": "Ice Pellets",
-    "7101": "Heavy Ice Pellets",
-    "7102": "Light Ice Pellets",
-    "8000": "Thunderstorm"
-};
-
-const weatherIcons = {
-    '1000': '10000_clear_large.png',
-    '1001': '10010_cloudy_large.png',
-    '1100': '11000_mostly_clear_large.png',
-    '1101': '11010_partly_cloudy_large.png',
-    '1102': '11020_mostly_cloudy_large.png',
-    '1103': '11030_mostly_clear_large.png',
-    '2000': '20000_fog_large.png',
-    '2100': '21000_fog_light_large.png',
-    '2101': '21010_fog_light_mostly_clear_large.png',
-    '2102': '21020_fog_light_partly_cloudy_large.png',
-    '2103': '21030_fog_light_mostly_cloudy_large.png',
-    '2106': '21060_fog_mostly_clear_large.png',
-    '2107': '21070_fog_partly_cloudy_large.png',
-    '2108': '21080_fog_mostly_cloudy_large.png',
-    '4000': '40000_drizzle_large.png',
-    '4001': '40010_rain_large.png',
-    '4200': '42000_rain_light_large.png',
-    '4201': '42010_rain_heavy_large.png',
-    '4202': '42020_rain_heavy_partly_cloudy_large.png',
-    '4203': '42030_drizzle_mostly_clear_large.png',
-    '4204': '42040_drizzle_partly_cloudy_large.png',
-    '4205': '42050_drizzle_mostly_cloudy_large.png',
-    '4208': '42080_rain_partly_cloudy_large.png',
-    '4209': '42090_rain_mostly_clear_large.png',
-    '4210': '42100_rain_mostly_cloudy_large.png',
-    '4211': '42110_rain_heavy_mostly_clear_large.png',
-    '4212': '42120_rain_heavy_mostly_cloudy_large.png',
-    '4213': '42130_rain_light_mostly_clear_large.png',
-    '4214': '42140_rain_light_partly_cloudy_large.png',
-    '4215': '42150_rain_light_mostly_cloudy_large.png',
-    '5000': '50000_snow_large.png',
-    '5001': '50010_flurries_large.png',
-    '5100': '51000_snow_light_large.png',
-    '5101': '51010_snow_heavy_large.png',
-    '5102': '51020_snow_light_mostly_clear_large.png',
-    '5103': '51030_snow_light_partly_cloudy_large.png',
-    '5104': '51040_snow_light_mostly_cloudy_large.png',
-    '5105': '51050_snow_mostly_clear_large.png',
-    '5106': '51060_snow_partly_cloudy_large.png',
-    '5107': '51070_snow_mostly_cloudy_large.png',
-    '5108': '51080_wintry_mix_large.png',
-    '5110': '51100_wintry_mix_large.png',
-    '5112': '51120_wintry_mix_large.png',
-    '5114': '51140_wintry_mix_large.png',
-    '5115': '51150_flurries_mostly_clear_large.png',
-    '5116': '51160_flurries_partly_cloudy_large.png',
-    '5117': '51170_flurries_mostly_cloudy_large.png',
-    '5119': '51190_snow_heavy_mostly_clear_large.png',
-    '5120': '51200_snow_heavy_partly_cloudy_large.png',
-    '5121': '51210_snow_heavy_mostly_cloudy_large.png',
-    '5122': '51220_wintry_mix_large.png',
-    '6000': '60000_freezing_rain_drizzle_large.png',
-    '6001': '60010_freezing_rain_large.png',
-    '6002': '60020_freezing_rain_drizzle_partly_cloudy_large.png',
-    '6003': '60030_freezing_rain_drizzle_mostly_clear_large.png',
-    '6004': '60040_freezing_rain_drizzle_mostly_cloudy_large.png',
-    '6200': '62000_freezing_rain_light_large.png',
-    '6201': '62010_freezing_rain_heavy_large.png',
-    '6202': '62020_freezing_rain_heavy_partly_cloudy_large.png',
-    '6203': '62030_freezing_rain_light_partly_cloudy_large.png',
-    '6204': '62040_wintry_mix_large.png',
-    '6205': '62050_freezing_rain_light_mostly_clear_large.png',
-    '6206': '62060_wintry_mix_large.png',
-    '6207': '62070_freezing_rain_heavy_mostly_clear_large.png',
-    '6208': '62080_freezing_rain_heavy_mostly_cloudy_large.png',
-    '6209': '62090_freezing_rain_light_mostly_cloudy_large.png',
-    '6212': '62120_wintry_mix_large.png',
-    '6213': '62130_freezing_rain_mostly_clear_large.png',
-    '6214': '62140_freezing_rain_partly_cloudy_large.png',
-    '6215': '62150_freezing_rain_mostly_cloudy_large.png',
-    '6220': '62200_wintry_mix_large.png',
-    '6222': '62220_wintry_mix_large.png',
-    '7000': '70000_ice_pellets_large.png',
-    '7101': '71010_ice_pellets_heavy_large.png',
-    '7102': '71020_ice_pellets_light_large.png',
-    '7103': '71030_wintry_mix_large.png',
-    '7105': '71050_wintry_mix_large.png',
-    '7106': '71060_wintry_mix_large.png',
-    '7107': '71070_ice_pellets_partly_cloudy_large.png',
-    '7108': '71080_ice_pellets_mostly_clear_large.png',
-    '7109': '71090_ice_pellets_mostly_cloudy_large.png',
-    '7110': '71100_ice_pellets_light_mostly_clear_large.png',
-    '7111': '71110_ice_pellets_light_partly_cloudy_large.png',
-    '7112': '71120_ice_pellets_light_mostly_cloudy_large.png',
-    '7113': '71130_ice_pellets_heavy_mostly_clear_large.png',
-    '7114': '71140_ice_pellets_heavy_partly_cloudy_large.png',
-    '7115': '71150_wintry_mix_large.png',
-    '7116': '71160_ice_pellets_heavy_mostly_cloudy_large.png',
-    '7117': '71170_wintry_mix_large.png',
-    '8000': '80000_tstorm_large.png',
-    '8001': '80010_tstorm_mostly_clear_large.png',
-    '8002': '80020_tstorm_mostly_cloudy_large.png',
-    '8003': '80030_tstorm_partly_cloudy_large.png'
-};
+// Render recent searches on page load
+document.addEventListener("DOMContentLoaded", () => updateRecentSearches(""));
