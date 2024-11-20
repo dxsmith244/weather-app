@@ -11,3 +11,5 @@
 * HTML: Structure of the web app.
 * CSS: Styling and layout design.
 * JavaScript: Fetching weather data and app interactivity.
+
+     

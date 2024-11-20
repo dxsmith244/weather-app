@@ -15,11 +15,16 @@
 
 <body>
     <main>
+        </aside>
         <section>
             <form id="city-form">
                 <div class="search">
-                    <input type="text" id="search-input" placeholder="enter city name">
+                    <input list="city-suggestions" id="search-input" placeholder="Enter city and state (e.g., New York, NY)">
+                    <datalist id="city-suggestions"></datalist>
                 </div>
+                <button id="current-location-btn" class="search-btn">
+                    <i class="fa-solid fa-location-arrow"></i>
+                </button>
                 <button id="search-btn" class="search-btn">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
@@ -37,7 +42,8 @@
                 <div class="heading">
                     <div class="heading-content">
                         <h2 id="behavior"></h2>
-                        <h1 class="temp"><span id="temp"></span><span>°C</span></h1>
+                        <h1 class="temp"><span id="temp"></span><span>°F</span></h1>
+                        <h1 class="feelslike"><span>Feels Like: </span><span id="feelslike"></span><span>°F</span></h1>
                     </div>
                     <div class="weather-icon-placeholder">
                         <img id="weather-icon" alt="Weather Icon">
@@ -54,14 +60,34 @@
                     <div class="wind-speed info">
                         <div class="flex">
                             <i class="fa-solid fa-wind"></i>
-                            <h1><span id="wind-speed"></span> km/h</h1>
+                            <h1><span id="wind-speed"></span> mph</h1>
                         </div>
                         <p>Wind Speed</p>
+                    </div>
+                    <div class="rain-chance info">
+                        <div class="flex">
+                            <i class="fa-solid fa-cloud-showers-heavy"></i>
+                            <h1><span id="chance-rain"></span></h1>
+                        </div>
+                        <p>Chance of Rain</p>
+                    </div>
+                    <div class="snow-chance info">
+                        <div class="flex">
+                            <i class="fa-solid fa-snowflake"></i>
+                            <h1><span id="chance-snow"></span></h1>
+                        </div>
+                        <p>Chance of Snow</p>
                     </div>
                 </div>
                 <h3 id="city"></h3>
             </div>
         </section>
+        <div class="forecast" hidden>
+            <h2>7-Day Forecast</h2>
+            <div class="forecast-cards" id="forecast-cards">
+                <!-- Forecast cards will be dynamically added here -->
+            </div>
+        </div>
     </main>
     <script src="../scripts/script.js" type="module"></script>
 </body>
