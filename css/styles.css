@@ -335,7 +335,7 @@ input:active {
         background-color: #ececec;
     }
     .dropdown-list {
-        list-style: none;
+        list-style: "ul";
         padding: 0;
         margin: 0;
         position: absolute;
