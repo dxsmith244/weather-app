@@ -27,19 +27,17 @@ let recentSearches = JSON.parse(localStorage.getItem("recentSearches")) || [];
 
 // Updates the UI with recent searches in the datalist
 function updateRecentSearches(city) {
-  if (!recentSearches.includes(city)) {
+  if (city && !recentSearches.includes(city)) {
     recentSearches.unshift(city);
     if (recentSearches.length > 5) recentSearches.pop();
   }
   localStorage.setItem("recentSearches", JSON.stringify(recentSearches));
 
-  // Clear existing options in the datalist
   citySuggestionsDatalist.innerHTML = "";
 
-  // Add recent searches as options
   recentSearches.forEach((search) => {
     const option = document.createElement("option");
-    option.value = search; // Use the full city name
+    option.value = search;
     citySuggestionsDatalist.appendChild(option);
   });
 }
@@ -96,15 +94,17 @@ function updateForecastUI(forecast) {
     const { date, day: dayData } = day;
     const { condition, maxtemp_f, mintemp_f, daily_chance_of_rain, daily_chance_of_snow } = dayData;
 
+    // Parse the date correctly
+    const localDate = new Date(date + "T00:00:00");
+
     const card = document.createElement("div");
     card.className = "forecast-card";
 
     card.innerHTML = `
-      <h3>${new Date(date).toLocaleDateString("en-US", { weekday: "long" })}</h3>
-      <p class="date">${new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+      <h3>${localDate.toLocaleDateString("en-US", { weekday: "long" })}</h3>
+      <p class="date">${localDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
       <img src="https:${condition.icon}" alt="${condition.text}">
       <p>${condition.text}</p>
-      <br>
       <p>High: ${Math.round(maxtemp_f)}°F</p>
       <p>Low: ${Math.round(mintemp_f)}°F</p>
       <p>Chance of Rain: ${daily_chance_of_rain || 0}%</p>
@@ -137,7 +137,6 @@ async function fetchCitySuggestions(query) {
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    // Clear previous suggestions
     citySuggestionsDatalist.innerHTML = "";
 
     data.forEach((city) => {
@@ -171,27 +170,10 @@ locationButton.addEventListener("click", (e) => {
   }
 });
 
-// Add an event listener for "Enter" key on the search input
-searchInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    const city = searchInput.value.trim();
-    if (city) {
-      fetchWeather(city);
-      updateRecentSearches(city);
-    } else {
-      alert("Please enter a city name.");
-    }
-  }
-});
-
-// Disable the geolocation button if the city input has text
 searchInput.addEventListener("input", () => {
   locationButton.disabled = !!searchInput.value.trim();
   const query = searchInput.value.trim();
-  fetchCitySuggestions(query); // Trigger city suggestions
-  updateRecentSearches("");  // Refresh recent searches in the dropdown when input is clicked
+  fetchCitySuggestions(query);
 });
 
-// Render recent searches on page load
 document.addEventListener("DOMContentLoaded", () => updateRecentSearches(""));
