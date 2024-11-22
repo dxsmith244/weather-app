@@ -27,17 +27,19 @@ let recentSearches = JSON.parse(localStorage.getItem("recentSearches")) || [];
 
 // Updates the UI with recent searches in the datalist
 function updateRecentSearches(city) {
-  if (city && !recentSearches.includes(city)) {
+  if (!recentSearches.includes(city)) {
     recentSearches.unshift(city);
     if (recentSearches.length > 5) recentSearches.pop();
   }
   localStorage.setItem("recentSearches", JSON.stringify(recentSearches));
 
+  // Clear existing options in the datalist
   citySuggestionsDatalist.innerHTML = "";
 
+  // Add recent searches as options
   recentSearches.forEach((search) => {
     const option = document.createElement("option");
-    option.value = search;
+    option.value = search; // Use the full city name
     citySuggestionsDatalist.appendChild(option);
   });
 }
@@ -85,7 +87,6 @@ function updateWeatherUI(data) {
   weatherDiv.hidden = false;
 }
 
-// Updates the forecast cards UI
 function updateForecastUI(forecast) {
   const forecastCards = document.getElementById("forecast-cards");
   forecastCards.innerHTML = "";
@@ -137,6 +138,7 @@ async function fetchCitySuggestions(query) {
     const response = await fetch(apiUrl);
     const data = await response.json();
 
+    // Clear previous suggestions
     citySuggestionsDatalist.innerHTML = "";
 
     data.forEach((city) => {
@@ -170,10 +172,27 @@ locationButton.addEventListener("click", (e) => {
   }
 });
 
+// Add an event listener for "Enter" key on the search input
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const city = searchInput.value.trim();
+    if (city) {
+      fetchWeather(city);
+      updateRecentSearches(city);
+    } else {
+      alert("Please enter a city name.");
+    }
+  }
+});
+
+// Disable the geolocation button if the city input has text
 searchInput.addEventListener("input", () => {
   locationButton.disabled = !!searchInput.value.trim();
   const query = searchInput.value.trim();
-  fetchCitySuggestions(query);
+  fetchCitySuggestions(query); // Trigger city suggestions
+  updateRecentSearches("");  // Refresh recent searches in the dropdown when input is clicked
 });
 
+// Render recent searches on page load
 document.addEventListener("DOMContentLoaded", () => updateRecentSearches(""));
