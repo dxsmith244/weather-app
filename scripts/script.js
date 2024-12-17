@@ -57,6 +57,22 @@ async function fetchWeather(city) {
     if (!response.ok) throw new Error("Failed to fetch weather data.");
 
     const data = await response.json();
+    console.log(data);
+
+    const weatherText = data.current.condition.text;
+
+    switch (true) {
+      case weatherText.includes("rain", "Overcast"):
+          changeRivBg("sky_rain.riv");
+          break;
+      case weatherText.includes("snow"):
+          changeRivBg("let_it_snow_let_it_snow.riv");
+          break;
+      default:
+          changeRivBg("sky_sun_cloud.riv");
+          break;
+  }
+  
     updateWeatherUI(data);
     updateForecastUI(data.forecast.forecastday);
   } catch (error) {
@@ -193,6 +209,35 @@ searchInput.addEventListener("input", () => {
   fetchCitySuggestions(query); // Trigger city suggestions
   updateRecentSearches("");  // Refresh recent searches in the dropdown when input is clicked
 });
+
+// Global variable to track the current canvas
+let currentCanvas = null;
+
+function changeRivBg(background) {
+  // If there's an existing canvas, clear it before creating a new one
+  if (currentCanvas) {
+    const context = currentCanvas.getContext("2d");
+    context.clearRect(0, 0, currentCanvas.width, currentCanvas.height); // Clear the canvas
+    document.body.removeChild(currentCanvas); // Optionally remove it from the DOM
+  }
+
+  const r = new rive.Rive({
+    src: background, // Your Rive animation
+    canvas: document.createElement("canvas"), // Create a new canvas element
+    autoplay: true,
+    stateMachines: "State Machine 1",
+    onLoad: () => {
+      const canvas = r.canvas;
+      canvas.id = "riveCanvas";
+
+      // Track the new canvas globally
+      currentCanvas = canvas;
+
+      document.body.appendChild(canvas); // Append the canvas to body
+      r.resizeDrawingSurfaceToCanvas(); // Ensure the canvas resizes to match the viewport
+    },
+  });
+}
 
 // Render recent searches on page load
 document.addEventListener("DOMContentLoaded", () => updateRecentSearches(""));
